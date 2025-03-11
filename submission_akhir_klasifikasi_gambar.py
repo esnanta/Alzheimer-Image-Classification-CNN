@@ -25,6 +25,7 @@ Link : [Alzheimer Dataset](https://www.kaggle.com/datasets/uraninjo/augmented-al
 """
 
 !pip install kagglehub
+!pip install tensorflowjs
 
 import kagglehub
 import os
@@ -37,14 +38,34 @@ import matplotlib.pyplot as plt
 
 import tensorflow as tf
 from tensorflow import keras
-from tensorflow.keras import layers, models
+from tensorflow.keras import layers, models, callbacks
+from tensorflow.keras.callbacks import EarlyStopping
+import tensorflowjs as tfjs
 
 """## Data Preparation"""
 
 # Tentukan dataset dan lokasi penyimpanan
 target_path = "/content/alzheimer_mri_dataset"
 split_dataset = "alzheimer_mri_dataset_split"
+alzheimer_model = "alzheimer_model"
 kaggle_dataset = "uraninjo/augmented-alzheimer-mri-dataset"
+
+def delete_folder(folder_path):
+    try:
+        shutil.rmtree(folder_path)
+        print(f"Folder '{folder_path}' deleted successfully.")
+    except FileNotFoundError:
+        print(f"Folder '{folder_path}' not found.")
+    except Exception as e:
+        print(f"Error: {e}")
+
+# Example usage
+folder_to_delete_1 = target_path
+folder_to_delete_2 = split_dataset
+folder_to_delete_3 = alzheimer_model
+delete_folder(folder_to_delete_1)
+delete_folder(folder_to_delete_2)
+delete_folder(folder_to_delete_3)
 
 # Jika dataset sudah ada, lewati proses download
 if os.path.exists(target_path) and len(os.listdir(target_path)) > 0:
@@ -268,10 +289,9 @@ BUFFER_SIZE = 1000  # Buffer size for shuffling
 def preprocess_image(image, label, augment=False):
     image = tf.image.convert_image_dtype(image, tf.float32)  # Normalize to [0,1]
 
-    # 🔹 Data Augmentation (hanya untuk training)
-    if augment:
-        image = tf.image.random_flip_left_right(image)
-        image = tf.image.random_brightness(image, max_delta=0.1)
+    # Data Augmentation (hanya untuk training)
+    # if augment:
+    #     image = tf.image.random_brightness(image, max_delta=0.1)
 
     return image, label
 
@@ -312,97 +332,198 @@ Adam Optimizer: Adaptive learning for stable training.
 Sparse Categorical Crossentropy: Used because labels are integers (not one-hot encoded).
 """
 
-# 🔹 Define Model Architecture
-def build_model():
-    model = models.Sequential([
-        layers.Conv2D(32, (3,3), activation='relu', input_shape=(224, 224, 3)),
-        layers.MaxPooling2D((2,2)),
-        layers.BatchNormalization(),
+# =====================================================
+# ✅ CALLBACKS: Early Stopping & Reduce LR
+# =====================================================
+early_stop_loss = callbacks.EarlyStopping(
+    monitor='val_loss', patience=5, restore_best_weights=True
+)
 
-        layers.Conv2D(64, (3,3), activation='relu'),
-        layers.MaxPooling2D((2,2)),
-        layers.BatchNormalization(),
+reduce_lr = callbacks.ReduceLROnPlateau(
+    monitor='val_loss', factor=0.2, patience=3, min_lr=1e-6
+)
 
-        layers.Conv2D(128, (3,3), activation='relu'),
-        layers.MaxPooling2D((2,2)),
-        layers.BatchNormalization(),
+# Callback untuk menghentikan training jika val_accuracy >= 95%
+early_stop_acc = callbacks.EarlyStopping(
+    monitor='val_accuracy',  # Pantau akurasi validasi
+    patience=5,              # Tunggu 5 epoch jika belum stabil
+    min_delta=0.001,         # Perbedaan minimal untuk dianggap meningkat
+    mode='max',              # Karena kita ingin memaksimalkan accuracy
+    verbose=1,               # Tampilkan log jika berhenti
+    restore_best_weights=True # Kembalikan model ke bobot terbaik
+)
 
-        layers.Flatten(),
-        layers.Dense(256, activation='relu'),
-        layers.Dropout(0.5),
-        layers.Dense(4, activation='softmax')  # 4 classes: VeryMildDemented, MildDemented, ModerateDemented, NonDemented
-    ])
+# =====================================================
+# ✅ MODEL CNN: Sequential API
+# =====================================================
+model = keras.Sequential([
+    layers.Conv2D(32, (3,3), activation='relu', input_shape=(224, 224, 3)),
+    layers.MaxPooling2D(2,2),
 
-    model.compile(
-        optimizer=keras.optimizers.Adam(learning_rate=0.001),
-        loss='sparse_categorical_crossentropy',
-        metrics=['accuracy']
-    )
+    layers.Conv2D(64, (3,3), activation='relu'),
+    layers.MaxPooling2D(2,2),
 
-    return model
+    layers.Conv2D(128, (3,3), activation='relu'),
+    layers.MaxPooling2D(2,2),
 
-# 📌 Build & Summary
-model = build_model()
-model.summary()
+    layers.Conv2D(256, (3,3), activation='relu'),  # Bisa dicoba tanpa 512 dulu
+    layers.MaxPooling2D(2,2),
 
-# 🔹 Implement Callbacks
-early_stopping = keras.callbacks.EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
-reduce_lr = keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=3, min_lr=1e-6)
+    layers.Conv2D(512, (3,3), activation='relu'),  # ✅ Layer tambahan 512
+    layers.MaxPooling2D(2,2),
 
-# 📌 Train Model
+    layers.Flatten(),
+    layers.Dense(128, activation='relu'),
+    layers.Dropout(0.5),  # Mengurangi overfitting
+    layers.Dense(4, activation='softmax')
+])
+
+# =====================================================
+# ✅ KOMPILE MODEL
+# =====================================================
+model.compile(
+    optimizer=keras.optimizers.Adam(learning_rate=0.001),
+    loss='sparse_categorical_crossentropy',
+    metrics=['accuracy']
+)
+
+# =====================================================
+# ✅ TRAINING MODEL
+# =====================================================
+EPOCHS = 50
+
 history = model.fit(
     train_dataset,
     validation_data=val_dataset,
-    epochs=50,  # Bisa disesuaikan
-    callbacks=[early_stopping, reduce_lr]
+    epochs=EPOCHS,  # Bisa set besar, karena EarlyStopping akan menghentikan lebih awal
+    callbacks=[early_stop_acc, early_stop_loss, reduce_lr]  # Tambahkan callbacks
 )
 
-# 🔹 Save Model (SavedModel Format)
-model.save("alzheimer_model")
+"""* Tambahkan Batch Normalization untuk stabilisasi training
+* Eksperimen dengan Dropout Rate (misalnya: 0.3 atau 0.4)
+* Pastikan dataset memiliki variasi cukup untuk menghindari bias
 
-# 📈 Plot Accuracy & Loss
+## Evaluasi dan Visualisasi
+"""
+
+# =====================================================
+# ✅ EVALUASI MODEL
+# =====================================================
+test_loss, test_accuracy = model.evaluate(test_dataset)
+print(f"Test Accuracy: {test_accuracy:.4f}, Test Loss: {test_loss:.4f}")
+
+# =====================================================
+# ✅ PLOT AKURASI & LOSS
+# =====================================================
 def plot_history(history):
-    plt.figure(figsize=(12,5))
+    plt.figure(figsize=(12, 5))
 
-    # 🔹 Accuracy Plot
-    plt.subplot(1,2,1)
-    plt.plot(history.history['accuracy'], label='Train Accuracy')
+    # Plot Akurasi
+    plt.subplot(1, 2, 1)
+    plt.plot(history.history['accuracy'], label='Training Accuracy')
     plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
-    plt.xlabel('Epochs')
+    plt.xlabel('Epoch')
     plt.ylabel('Accuracy')
     plt.legend()
-    plt.title('Model Accuracy')
+    plt.grid(True)
+    plt.title('Training & Validation Accuracy')
 
-    # 🔹 Loss Plot
-    plt.subplot(1,2,2)
-    plt.plot(history.history['loss'], label='Train Loss')
+    # Plot Loss
+    plt.subplot(1, 2, 2)
+    plt.plot(history.history['loss'], label='Training Loss')
     plt.plot(history.history['val_loss'], label='Validation Loss')
-    plt.xlabel('Epochs')
+    plt.xlabel('Epoch')
     plt.ylabel('Loss')
     plt.legend()
-    plt.title('Model Loss')
-
+    plt.title('Training & Validation Loss')
+    plt.grid(True)
     plt.show()
 
-# 🔍 Visualize Training
-plot_history(history)
+# Pastikan history ada sebelum memanggil fungsi
+if 'history' in locals():
+    plot_history(history)
+else:
+    print("History belum tersedia. Pastikan model telah dilatih.")
 
-# 🔹 Convert to TensorFlow Lite
-converter = tf.lite.TFLiteConverter.from_saved_model("alzheimer_model")
+"""## Konversi Model"""
+
+# =====================================================
+# ✅ SIMPAN MODEL DALAM FORMAT SavedModel, TF-Lite, & TFJS
+# =====================================================
+
+# Simpan sebagai Keras Native Format (.keras) → Disarankan untuk penyimpanan umum
+model.save("alzheimer_model_native.keras")
+
+# Simpan sebagai SavedModel (untuk TFLite dan TFServing)
+model.export("alzheimer_model/TFLite_TFServing")
+
+# Simpan sebagai TF-Lite
+converter = tf.lite.TFLiteConverter.from_keras_model(model)
 tflite_model = converter.convert()
 with open("alzheimer_model.tflite", "wb") as f:
     f.write(tflite_model)
 
-# 🔹 Convert to TensorFlow.js
-!tensorflowjs_converter --input_format=tf_saved_model --output_node_names='dense' --saved_model_tags=serve alzheimer_model tfjs_model
-
-"""## Evaluasi dan Visualisasi"""
-
-
-
-"""## Konversi Model"""
-
-
+# Simpan sebagai TensorFlow.js
+tfjs.converters.save_keras_model(model, "alzheimer_model/tfjs_model")
 
 """## Inference (Optional)"""
 
+import tensorflow as tf
+import numpy as np
+import matplotlib.pyplot as plt
+from google.colab import files
+from IPython.display import display
+from PIL import Image
+
+# =====================================================
+# ✅ LOAD MODEL
+# =====================================================
+MODEL_PATH = "alzheimer_model_native.keras"
+model = tf.keras.models.load_model(MODEL_PATH)
+
+# Kelas sesuai dengan dataset
+CLASS_NAMES = ['MildDemented', 'ModerateDemented', 'NonDemented', 'VeryMildDemented']
+
+# =====================================================
+# ✅ GUNAKAN PREPROCESS_IMAGE DARI TRAINING
+# =====================================================
+def preprocess_image(image):
+    """ Preprocessing gambar agar sesuai dengan training pipeline """
+    image = tf.image.convert_image_dtype(image, tf.float32)  # Normalisasi ke [0,1]
+    return image
+
+# =====================================================
+# ✅ PREDIKSI GAMBAR (Menggunakan Preprocessing dari Training)
+# =====================================================
+def predict_image(image_path):
+    # 1️⃣ Load gambar dan konversi ke RGB
+    image = Image.open(image_path).convert('RGB')
+    image = image.resize((224, 224))  # Resize agar sesuai dengan input model
+
+    # 2️⃣ Konversi ke Tensor
+    image = tf.keras.preprocessing.image.img_to_array(image)  # Konversi ke array
+    image = preprocess_image(image)  # Gunakan preprocessing yang sama
+    image = tf.expand_dims(image, axis=0)  # Tambahkan batch dimension
+
+    # 3️⃣ Prediksi dengan model
+    predictions = model(image, training=False)  # Pastikan dalam mode inference
+    predicted_class = CLASS_NAMES[tf.argmax(predictions, axis=-1).numpy()[0]]
+    confidence = tf.reduce_max(predictions).numpy() * 100  # Convert ke persen
+
+    return predicted_class, confidence
+
+# =====================================================
+# ✅ UPLOAD GAMBAR & PREDIKSI
+# =====================================================
+uploaded = files.upload()
+
+for file_name in uploaded.keys():
+    # Tampilkan gambar
+    image = Image.open(file_name)
+    display(image)
+
+    # Prediksi
+    predicted_class, confidence = predict_image(file_name)
+
+    # Tampilkan hasil prediksi
+    print(f"\n🔍 **Prediksi:** {predicted_class} ({confidence:.2f}%)\n")
