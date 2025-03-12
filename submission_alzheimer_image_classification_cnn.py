@@ -42,6 +42,10 @@ from tensorflow.keras import layers, models, callbacks
 from tensorflow.keras.callbacks import EarlyStopping
 import tensorflowjs as tfjs
 
+from google.colab import files
+from IPython.display import display
+from PIL import Image
+
 """## Data Preparation"""
 
 # Tentukan dataset dan lokasi penyimpanan
@@ -494,13 +498,6 @@ with open("alzheimer_model.tflite", "wb") as f:
 tfjs.converters.save_keras_model(model, "alzheimer_model/tfjs_model")
 
 """## Inference (Optional)"""
-
-import tensorflow as tf
-import numpy as np
-import matplotlib.pyplot as plt
-from google.colab import files
-from IPython.display import display
-from PIL import Image
 
 # =====================================================
 # ✅ LOAD MODEL
