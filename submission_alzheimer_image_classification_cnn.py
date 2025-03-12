@@ -24,8 +24,8 @@ Link : [Alzheimer Dataset](https://www.kaggle.com/datasets/uraninjo/augmented-al
 ## Import Semua Packages/Library yang Digunakan
 """
 
-!pip install kagglehub
-!pip install tensorflowjs
+# !pip install kagglehub
+# !pip install tensorflowjs
 
 import kagglehub
 import os
