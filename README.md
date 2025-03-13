@@ -16,10 +16,8 @@ This dataset contains MRI images categorized into four classes:
 This project classifies Alzheimer’s disease using CNN. Below is the structured workflow:
 
 ### 1️⃣ Importing Required Libraries
-Essential libraries such as TensorFlow, NumPy, and Matplotlib are imported.
 
 ### 2️⃣ Data Preparation
-The dataset is preprocessed and structured properly for model training.
 
 ### 3️⃣ Dataset Splitting
 The dataset is divided into:
@@ -28,11 +26,6 @@ The dataset is divided into:
 - **10% Testing**
 
 ### 4️⃣ Data Loading
-- Utilizes `image_dataset_from_directory()` for structured dataset loading.
-- Ensures automatic class labeling with `train_dataset.class_names`.
-- Uses `tf.data.experimental.cardinality()` to count dataset images.
-- Implements correct preprocessing and data augmentation (augmentation only applied to training data).
-- Efficient training with **shuffling, batching, and prefetching**.
 
 ### 5️⃣ Preprocessing Data
 - **Resize Images** to 224x224 pixels for uniform input size.
