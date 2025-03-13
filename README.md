@@ -52,7 +52,7 @@ The CNN model consists of:
   - `Adam Optimizer` (Adaptive learning for stable convergence)
   - `Sparse Categorical Crossentropy` (Handles integer class labels efficiently)
   - **Callbacks:**
-    - `EarlyStopping`: Stops training if no improvement or accuracy reaches **≥95%**.
+    - `EarlyStopping`: Stops training if no improvement after 5 epoch.
     - `ReduceLROnPlateau`: Reduces learning rate if validation loss stagnates.
     - **Custom Callback:** Stops training when validation accuracy hits **95%**.
 
