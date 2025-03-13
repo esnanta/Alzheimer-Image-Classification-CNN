@@ -3,7 +3,10 @@
 ## 📌 About Alzheimer’s Disease
 Alzheimer's disease is a progressive neurological disorder that leads to memory loss and cognitive decline. It is one of the most common causes of dementia, affecting millions of people worldwide. Early detection through MRI imaging can assist in diagnosis and treatment.
 
-![Alzheimer Disease](https://github.com/esnanta/alzheimer-image-classification-cnn/blob/53ace85414cdc71ec077d7ca77bf02f5daef81ee/image/alzheimer_images.png?raw=true)
+<p align="center">
+  <img src="https://github.com/esnanta/alzheimer-image-classification-cnn/blob/89b9ab8ac33d6ffae674ab42780d4894f884f824/image/alzheimer_images_1.png?raw=true" width="45%" />
+  <img src="https://github.com/esnanta/alzheimer-image-classification-cnn/blob/89b9ab8ac33d6ffae674ab42780d4894f884f824/image/alzheimer_images_2.png?raw=true" width="45%" />
+</p>
 
 ## 🧠 About the Dataset
 This dataset contains MRI images categorized into four classes:
