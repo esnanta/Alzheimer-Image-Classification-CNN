@@ -3,6 +3,8 @@
 ## 📌 About Alzheimer’s Disease
 Alzheimer's disease is a progressive neurological disorder that leads to memory loss and cognitive decline. It is one of the most common causes of dementia, affecting millions of people worldwide. Early detection through MRI imaging can assist in diagnosis and treatment.
 
+![Alzheimer Disease](https://github.com/esnanta/alzheimer-image-classification-cnn/blob/53ace85414cdc71ec077d7ca77bf02f5daef81ee/image/alzheimer_images.png?raw=true)
+
 ## 🧠 About the Dataset
 This dataset contains MRI images categorized into four classes:
 - **Mild Demented**: 8,960 images
@@ -55,6 +57,8 @@ The CNN model consists of:
 After training, the model achieves:
 - **Test Accuracy**: **96.59%**
 - **Test Loss**: **0.0991**
+
+![Training & Validation Accuracy](https://github.com/esnanta/alzheimer-image-classification-cnn/blob/c5977b0594fc128be3a5db9c10f42c9d3e1c498d/image/training_validation_accuracy.png?raw=true)
 
 #### Training & Validation Accuracy Analysis
 📈 **Accuracy Trends:**
